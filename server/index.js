@@ -8,6 +8,7 @@ const publisher = require("./publisher");
 const app = express();
 
 app.use(require("cors")());
+app.use(express.json());
 
 class Room {
   constructor(id) {
@@ -44,7 +45,7 @@ class Game {
   }
 
   getById(id) {
-    this.rooms.find((room) => room.id == id);
+    return this.rooms.find((room) => room.id == id);
   }
 
   removeUser(id, nick) {
@@ -87,6 +88,16 @@ const game = new Game();
 app.get("/rooms", (req, res) => {
   const rooms = game.getRoomsIds();
   res.send({ success: true, rooms });
+});
+
+app.get("/room/:id", (req, res) => {
+  const room = game.getById(req.params.id);
+  res.send({ success: true, room });
+});
+
+app.post("/room/:id", (req, res) => {
+  game.addMessage(req.params.id, req.body.message);
+  res.send({ success: true });
 });
 
 app.get("/create-room", (req, res) => {

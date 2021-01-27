@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import axios from "axios";
 
 const EXPRESS_PORT = 8000;
-
 const API = `http://localhost:${EXPRESS_PORT}`;
 
 function Lobby({ client }) {
@@ -35,11 +34,11 @@ function Lobby({ client }) {
         message = message.toString();
         topic = topic.toString();
         if (topic === "rooms") {
-          setRooms([...rooms, message]);
+          setRooms((x) => [...x, message]);
         }
       });
     }
-  }, [client, rooms]);
+  }, [client]);
   return (
     <div>
       {(connected && "connected") || "not connected"}
