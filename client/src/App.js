@@ -1,42 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import Lobby from "./Lobby";
+import Room from "./Room";
 import mqtt from "mqtt";
-import axios from "axios";
 
-const EXPRESS_PORT = 8000;
+import { BrowserRouter as Router, Switch, Route, Link } from "react-router-dom";
+
 const SOCKET_PORT = 8001;
-
-const API = `http://localhost:${EXPRESS_PORT}`;
 const BROKER = `ws://localhost:${SOCKET_PORT}`;
 
 function App() {
-  const [connected, setConnected] = useState(false);
-
-  async function createRoom() {
-    const response = await axios.get(`${API}/create-room`);
-    console.log(response);
-  }
+  const [client, setClient] = useState(null);
 
   useEffect(() => {
-    let client = null;
     try {
-      client = mqtt.connect(BROKER);
+      const c = mqtt.connect(BROKER);
+      setClient(c);
     } catch (err) {
       console.log(`mqtt connecting error`, err);
     }
-
-    client.on("connect", () => {
-      setConnected(true);
-    });
   }, []);
   return (
-    <div>
-      {(connected && "connected") || "not connected"}
-      <div>
-        <button className="button" onClick={createRoom}>
-          create room
-        </button>
-      </div>
-    </div>
+    <Router>
+      <Switch>
+        <Route exact path="/">
+          <Lobby client={client} />
+        </Route>
+        <Route path="/room/:id">
+          <Room client={client} />
+        </Route>
+      </Switch>
+    </Router>
   );
 }
 

@@ -1,6 +1,9 @@
-const express = require("express");
 require("dotenv").config();
+
+const express = require("express");
+const shortid = require("shortid");
 const { startBroker } = require("./broker");
+const publisher = require("./publisher");
 
 const app = express();
 
@@ -67,11 +70,29 @@ class Game {
   assignPlayerTwo(id, nick) {
     this.getById(id).assignPlayerTwo(nick);
   }
+
+  addRoom() {
+    const room = new Room(shortid.generate());
+    this.rooms.push(room);
+    return room;
+  }
+
+  getRoomsIds() {
+    return this.rooms.map((room) => room.id);
+  }
 }
 
+const game = new Game();
+
+app.get("/rooms", (req, res) => {
+  const rooms = game.getRoomsIds();
+  res.send({ success: true, rooms });
+});
+
 app.get("/create-room", (req, res) => {
-  console.log(req, res);
-  res.send({ success: true });
+  const room = game.addRoom();
+  publisher.publish("rooms", room.id);
+  res.send({ success: true, room });
 });
 
 const port = process.env.EXPRESS_PORT;
