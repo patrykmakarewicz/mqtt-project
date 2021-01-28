@@ -3,7 +3,7 @@ import Lobby from "./Lobby";
 import Room from "./Room";
 import mqtt from "mqtt";
 
-import { BrowserRouter as Router, Switch, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 
 const SOCKET_PORT = 8001;
 const BROKER = `ws://localhost:${SOCKET_PORT}`;

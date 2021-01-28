@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useHistory } from "react-router-dom";
 import axios from "axios";
 
 const EXPRESS_PORT = 8000;
 const API = `http://localhost:${EXPRESS_PORT}`;
 
 function Lobby({ client }) {
+  const history = useHistory();
   const [connected, setConnected] = useState(false);
   const [rooms, setRooms] = useState([]);
 
   async function createRoom() {
     const { data } = await axios.get(`${API}/create-room`);
     const { id } = data.room;
+    history.push(`/room/${id}`);
   }
 
   useEffect(() => {
