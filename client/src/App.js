@@ -12,12 +12,17 @@ function App() {
   const [client, setClient] = useState(null);
 
   useEffect(() => {
-    try {
-      const c = mqtt.connect(BROKER);
-      setClient(c);
-    } catch (err) {
-      console.log(`mqtt connecting error`, err);
+    async function connect() {
+      try {
+        const c = await mqtt.connect(BROKER);
+        c.on("connect", () => {
+          setClient(c);
+        });
+      } catch (err) {
+        console.log(`mqtt connecting error`, err);
+      }
     }
+    connect();
   }, []);
   return (
     <Router>

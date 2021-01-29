@@ -43,18 +43,24 @@ function Lobby({ client }) {
   }, [client]);
   return (
     <div>
-      {(connected && "connected") || "not connected"}
-      <div>
-        <button className="button" onClick={createRoom}>
-          create room
-        </button>
-        {rooms &&
-          rooms.map((room, id) => (
-            <div key={id}>
-              <Link to={`/room/${room}`}> {room} </Link>
-            </div>
-          ))}
-      </div>
+      {connected ? (
+        <div>
+          <div className="has-text-info">connected to the server</div>
+          <div>
+            <button className="button" onClick={createRoom}>
+              create room
+            </button>
+            {rooms &&
+              rooms.map((room, id) => (
+                <div key={id}>
+                  <Link to={`/room/${room}`}> {room} </Link>
+                </div>
+              ))}
+          </div>
+        </div>
+      ) : (
+        <div className="has-text-danger">not connected to the server</div>
+      )}
     </div>
   );
 }

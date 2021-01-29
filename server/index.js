@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const shortid = require("shortid");
 const { startBroker } = require("./broker");
+const { removeOutgoingMessage } = require("./publisher");
 const publisher = require("./publisher");
 
 const app = express();
@@ -16,8 +17,20 @@ class Room {
     this.messages = [];
     this.users = [];
     this.player1 = null;
+    this.player1Moves = 0;
+    this.player2Moves = 0;
+    this.player1Lap = 0;
+    this.player2Lap = 0;
+    this.pos1 = { level: 0, x: 0, y: 0 };
+    this.startPos1 = { level: 0, x: 0, y: 0 };
+    this.startPos2 = { level: 0, x: 5, y: 7 };
     this.player2 = null;
+    this.pos2 = { level: 0, x: 5, y: 7 };
     this.gameStarted = false;
+    this.gameEnded = false;
+    this.move = 0;
+    this.note = "";
+    this.laps = 2;
   }
 
   addMessage(message) {
@@ -87,6 +100,107 @@ class Game {
   getRoomsIds() {
     return this.rooms.map((room) => room.id);
   }
+
+  move(id, n) {
+    const room = this.getById(id);
+    let x = null;
+    let y = null;
+
+    if (room.move == 0) {
+      room.player1Moves += n;
+      x = room.pos1;
+      y = room.pos2;
+    } else {
+      room.player2Moves += n;
+      x = room.pos2;
+      y = room.pos1;
+    }
+
+    if (x.level == 0) {
+      x.x += n;
+      n = 0;
+      if (x.x >= 5) {
+        n = x.x - 5;
+        x.x = 5;
+        x.level += 1;
+      }
+    }
+    if (x.level == 1) {
+      x.y += n;
+      n = 0;
+      if (x.y >= 7) {
+        n = x.y - 7;
+        x.y = 7;
+        x.level += 1;
+      }
+    }
+    if (x.level == 2) {
+      x.x -= n;
+      n = 0;
+      if (x.x <= 0) {
+        n = -x.x;
+        x.x = 0;
+        x.level += 1;
+      }
+    }
+    if (x.level == 3) {
+      x.y -= n;
+      n = 0;
+      if (x.y <= 0) {
+        n = -x.y;
+        x.y = 0;
+        x.level = 0;
+      }
+    }
+    if (x.level == 0) {
+      x.x += n;
+      n = 0;
+      if (x.x >= 5) {
+        n = x.x - 5;
+        x.x = 5;
+        x.level += 1;
+      }
+    }
+
+    if (x.x == y.x && x.y == y.y) {
+      if (room.move == 0) {
+        room.player2Moves = 0;
+        y.x = room.startPos2.x;
+        y.y = room.startPos2.y;
+        y.level = room.startPos2.level;
+      } else {
+        room.player1Moves = 0;
+        y.x = room.startPos1.x;
+        y.y = room.startPos1.y;
+        y.level = room.startPos1.level;
+      }
+    }
+
+    if (room.player1Moves >= 24) {
+      room.player1Moves = x.x;
+      room.player1Lap += 1;
+    }
+
+    if (room.player2Moves >= 24) {
+      room.player2Moves = x.y;
+      room.player2Lap += 1;
+    }
+
+    if (room.player1Lap == room.laps) {
+      room.gameEnded = true;
+      room.note = "player X won the game!";
+    } else if (room.player2Lap == room.laps) {
+      room.gameEnded = true;
+      room.note = "player X won the game!";
+    }
+
+    if (room.gameEnded) {
+      room.gameStarted = false;
+    }
+
+    room.move += 1;
+    if (room.move == 2) room.move = 0;
+  }
 }
 
 const game = new Game();
@@ -129,6 +243,15 @@ app.get("/create-room", (req, res) => {
   const room = game.addRoom();
   publisher.publish("rooms", room.id);
   res.send({ success: true, room });
+});
+
+app.post("/room/move", (req, res) => {
+  game.move(req.body.id, req.body.n);
+  publisher.publish(
+    `room/${req.body.id}/update`,
+    JSON.stringify(game.getById(req.body.id))
+  );
+  res.send({ success: true });
 });
 
 app.post("/room/assign-player1", (req, res) => {

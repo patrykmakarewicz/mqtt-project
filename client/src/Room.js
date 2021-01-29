@@ -42,51 +42,7 @@ function generateBoard() {
   return arr;
 }
 
-function Board() {
-  const [pos, setPos] = useState({ level: 0, x: 5, y: 1 });
-
-  function move(n) {
-    const x = { ...pos };
-
-    if (x.level == 0) {
-      x.x += n;
-      n = 0;
-      if (x.x >= 5) {
-        n = x.x - 5;
-        x.x = 5;
-        x.level += 1;
-      }
-    }
-    if (x.level == 1) {
-      x.y += n;
-      n = 0;
-      if (x.y >= 7) {
-        n = x.y - 7;
-        x.y = 7;
-        x.level += 1;
-      }
-    }
-    if (x.level == 2) {
-      x.x -= n;
-      n = 0;
-      if (x.x <= 0) {
-        n = -x.x;
-        x.x = 0;
-        x.level += 1;
-      }
-    }
-    if (x.level == 3) {
-      x.y -= n;
-      n = 0;
-      if (x.y <= 0) {
-        n = -x.y;
-        x.y = 0;
-        x.level = 0;
-      }
-    }
-    setPos(x);
-  }
-
+function Board({ room, move }) {
   const [board, setBoard] = useState(generateBoard());
 
   useEffect(() => {
@@ -94,18 +50,24 @@ function Board() {
       const newBoard = generateBoard();
       for (let i = 0; i < board.length; i++) {
         for (let j = 0; j < board[i].length; j++) {
-          if (pos.x == j && pos.y == i) {
+          if (room.pos1.x == j && room.pos1.y == i) {
             newBoard[i][j] = "x";
+          }
+          if (room.pos2.x == j && room.pos2.y == i) {
+            if (newBoard[i][j] == "x") {
+              newBoard[i][j] = "y, x";
+            } else {
+              newBoard[i][j] = "y";
+            }
           }
         }
       }
       return newBoard;
     });
-  }, [pos]);
+  }, [room]);
 
   return (
     <div>
-      <button onClick={() => move(1)}> click </button>
       <table align="center" width="400" height="200" border="1">
         {board.map((i, idx) => {
           return (
@@ -113,7 +75,19 @@ function Board() {
               <tr>
                 {i.map((j, idx2) => {
                   return (
-                    <td key={idx2} width="50" height="50" bgcolor="white">
+                    <td
+                      key={idx2}
+                      width="50"
+                      height="50"
+                      bgcolor={
+                        idx == 0 ||
+                        idx == board.length - 1 ||
+                        idx2 == 0 ||
+                        idx2 == i.length - 1
+                          ? "white"
+                          : "grey"
+                      }
+                    >
                       {j}
                     </td>
                   );
@@ -132,6 +106,7 @@ export default function Room({ client }) {
   const [auth, setAuth] = useState(false);
   const [error, setError] = useState("");
   const [nick, setNick] = useState("");
+  const [number, setNumber] = useState(0);
 
   const [message, setMessage] = useState("");
   const { id } = useParams();
@@ -181,6 +156,7 @@ export default function Room({ client }) {
   }, [client]);
 
   async function joinRoom(nick) {
+    if (nick.replace(/\s/g, "").length == 0) return;
     const { data } = await axios.post(`${API}/room/add-user`, {
       id,
       nick,
@@ -213,19 +189,80 @@ export default function Room({ client }) {
     });
   }
 
+  function randomNumber() {
+    setNumber(Math.floor(Math.random() * 6) + 1);
+  }
+
+  async function move() {
+    await axios.post(`${API}/room/move`, { id, n: number });
+    setNumber(0);
+  }
+
   return (
     <div>
       {auth ? (
         <div>
-          <div> {nick} </div>
-          {room.gameStarted && <Board />}
+          {room.gameStarted && (
+            <div className="has-text-centered">
+              <div>player x lap: {room.player1Lap}</div>
+              <div>player y lap: {room.player2Lap}</div>
+              <div>{room.move == 0 ? "player x move" : "player y move"}</div>
+              {room.move == 0 && room.player1 == nick && (
+                <div>
+                  {number == 0 && (
+                    <button onClick={randomNumber} className="button">
+                      {" "}
+                      roll{" "}
+                    </button>
+                  )}
+                  {number > 0 && (
+                    <div>
+                      <div>
+                        <button onClick={move} className="button">
+                          {" "}
+                          move by {number}{" "}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {room.move == 1 && room.player2 == nick && (
+                <div>
+                  {number == 0 && (
+                    <button onClick={randomNumber} className="button">
+                      {" "}
+                      roll{" "}
+                    </button>
+                  )}
+                  {number > 0 && (
+                    <div>
+                      <div>
+                        <button onClick={move} className="button">
+                          move by {number}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <Board room={room} />
+            </div>
+          )}
+
+          {room.gameEnded && (
+            <div class="has-text-centered">
+              {room.note}
+              <Board room={room} />
+            </div>
+          )}
+
           <div>
             <button
               className="button"
               disabled={room.player1}
               onClick={joinTeamX}
             >
-              {" "}
               Join Team X
             </button>
             {room.player1}
