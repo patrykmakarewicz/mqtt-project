@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import React from "react";
 
 const EXPRESS_PORT = 8000;
 const API = `http://localhost:${EXPRESS_PORT}`;
@@ -51,13 +52,13 @@ function Board({ room, move }) {
       for (let i = 0; i < board.length; i++) {
         for (let j = 0; j < board[i].length; j++) {
           if (room.pos1.x == j && room.pos1.y == i) {
-            newBoard[i][j] = "x";
+            newBoard[i][j] = "X";
           }
           if (room.pos2.x == j && room.pos2.y == i) {
-            if (newBoard[i][j] == "x") {
-              newBoard[i][j] = "y, x";
+            if (newBoard[i][j] == "X") {
+              newBoard[i][j] = "Y, X";
             } else {
-              newBoard[i][j] = "y";
+              newBoard[i][j] = "Y";
             }
           }
         }
@@ -65,6 +66,12 @@ function Board({ room, move }) {
       return newBoard;
     });
   }, [room]);
+
+  function color(idx, idx2) {
+    if (idx == 0 && idx2 == 0) return "aquamarine";
+    if (idx == 7 && idx2 == 5) return "red";
+    if (idx > 0 && idx < 7 && idx2 > 0 && idx2 < 5) return "grey";
+  }
 
   return (
     <div>
@@ -79,14 +86,7 @@ function Board({ room, move }) {
                       key={idx2}
                       width="50"
                       height="50"
-                      bgcolor={
-                        idx == 0 ||
-                        idx == board.length - 1 ||
-                        idx2 == 0 ||
-                        idx2 == i.length - 1
-                          ? "white"
-                          : "grey"
-                      }
+                      bgcolor={color(idx, idx2)}
                     >
                       {j}
                     </td>
@@ -107,6 +107,7 @@ export default function Room({ client }) {
   const [error, setError] = useState("");
   const [nick, setNick] = useState("");
   const [number, setNumber] = useState(0);
+  const [chatContainer, setChatContainer] = useState(React.createRef());
 
   const [message, setMessage] = useState("");
   const { id } = useParams();
@@ -123,6 +124,7 @@ export default function Room({ client }) {
     });
     client.publish(`room/${id}`, formatMessage(message));
     setMessage("");
+    scroll();
   }
 
   useEffect(() => {
@@ -131,11 +133,17 @@ export default function Room({ client }) {
       setRoom(data.room);
     }
     fetchData();
-  }, []);
+
+    return () => {
+      axios.post(`${API}/room/remove-user`, {
+        id,
+        nick,
+      });
+    };
+  }, [nick]);
 
   useEffect(() => {
     if (client) {
-      client.subscribe("fuck");
       client.subscribe(`room/${id}`);
       client.subscribe(`room/${id}/update`);
 
@@ -144,7 +152,6 @@ export default function Room({ client }) {
         topic = topic.toString();
 
         if (topic === `room/${id}`) {
-          console.log(topic, message);
           setRoom((x) => ({ ...x, messages: [...x.messages, message] }));
         }
 
@@ -198,15 +205,44 @@ export default function Room({ client }) {
     setNumber(0);
   }
 
+  function scroll() {
+    if (chatContainer) {
+      const scroll =
+        chatContainer.current.scrollHeight - chatContainer.current.clientHeight;
+      chatContainer.current.scrollTo(0, scroll);
+    }
+  }
+
   return (
     <div>
       {auth ? (
         <div>
+          <div>
+            <button
+              className="button"
+              disabled={room.player1}
+              onClick={joinTeamX}
+            >
+              Join Team X
+            </button>
+            {room.player1}
+          </div>
+          <div>
+            <button
+              className="button"
+              disabled={room.player2}
+              onClick={joinTeamY}
+            >
+              {" "}
+              Join Team Y
+            </button>
+            {room.player2}
+          </div>
           {room.gameStarted && (
-            <div className="has-text-centered">
-              <div>player x lap: {room.player1Lap}</div>
-              <div>player y lap: {room.player2Lap}</div>
-              <div>{room.move == 0 ? "player x move" : "player y move"}</div>
+            <div className="has-text-centered subtitle is-4">
+              <div>player X lap: {room.player1Lap}</div>
+              <div>player Y lap: {room.player2Lap}</div>
+              <div>{room.move == 0 ? "player X move" : "player Y move"}</div>
               {room.move == 0 && room.player1 == nick && (
                 <div>
                   {number == 0 && (
@@ -252,33 +288,11 @@ export default function Room({ client }) {
 
           {room.gameEnded && (
             <div class="has-text-centered">
-              {room.note}
+              <div className="subtitle is-3 mb-3">{room.note}</div>
               <Board room={room} />
             </div>
           )}
-
-          <div>
-            <button
-              className="button"
-              disabled={room.player1}
-              onClick={joinTeamX}
-            >
-              Join Team X
-            </button>
-            {room.player1}
-          </div>
-          <div>
-            <button
-              className="button"
-              disabled={room.player2}
-              onClick={joinTeamY}
-            >
-              {" "}
-              Join Team Y
-            </button>
-            {room.player2}
-          </div>
-          <div className="column is-4">
+          <div className="column is-2">
             <input
               className="input"
               value={message}
@@ -289,8 +303,27 @@ export default function Room({ client }) {
               send{" "}
             </button>
           </div>
-          {room &&
-            room.messages.map((message, id) => <div key={id}>{message}</div>)}
+          <div
+            ref={chatContainer}
+            style={{
+              height: "300px",
+              overflowY: "scroll",
+              border: "1px solid black",
+            }}
+            className="column is-4"
+          >
+            {room &&
+              room.messages.map((message, id) => (
+                <div
+                  key={id}
+                  style={{
+                    backgroundColor: id % 2 == 0 ? "rgb(230,230,230)" : "white",
+                  }}
+                >
+                  {message}
+                </div>
+              ))}
+          </div>
         </div>
       ) : (
         <div className="column is-4 is-offset-4 box">

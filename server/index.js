@@ -165,10 +165,12 @@ class Game {
     if (x.x == y.x && x.y == y.y) {
       if (room.move == 0) {
         room.player2Moves = 0;
+        room.player2Lap = 0;
         y.x = room.startPos2.x;
         y.y = room.startPos2.y;
         y.level = room.startPos2.level;
       } else {
+        room.player1Lap = 0;
         room.player1Moves = 0;
         y.x = room.startPos1.x;
         y.y = room.startPos1.y;
@@ -182,7 +184,7 @@ class Game {
     }
 
     if (room.player2Moves >= 24) {
-      room.player2Moves = x.y;
+      room.player2Moves = 5 - x.x;
       room.player2Lap += 1;
     }
 
@@ -191,7 +193,7 @@ class Game {
       room.note = "player X won the game!";
     } else if (room.player2Lap == room.laps) {
       room.gameEnded = true;
-      room.note = "player X won the game!";
+      room.note = "player Y won the game!";
     }
 
     if (room.gameEnded) {
@@ -236,6 +238,7 @@ app.post("/room/remove-user", (req, res) => {
     game.getById(req.body.id).player2 = null;
   }
   game.removeUser(req.body.id, req.body.nick);
+  publisher.publish(`room/${req.body.id}/update`, JSON.stringify(room));
   res.send({ success: true });
 });
 
